@@ -35,6 +35,13 @@ export async function notifyMove(matchId, actorName, action, creatorTelegramId, 
   }
 }
 
+export async function notifyPlayerJoined(matchId, joinerName, creatorTelegramId) {
+  await sendBotMessage(
+    creatorTelegramId,
+    `🐾 Match #${matchId}: <b>${joinerName}</b> joined your match!`
+  );
+}
+
 export async function notifyYourTurn(telegramId, matchId) {
   await sendBotMessage(
     telegramId,
