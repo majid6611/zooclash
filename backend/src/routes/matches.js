@@ -117,7 +117,7 @@ router.post('/:id/join', authMiddleware, async (req, res) => {
   const updated = await getMatchFull(matchId);
 
   // Tell both players what happened; tell joiner it's their turn to guess
-  await notifyMove(matchId, joiner.first_name || 'Opponent', updated.creator_telegram_id, updated.joiner_telegram_id);
+  await notifyMove(matchId, joiner.first_name || 'Opponent', 'joined the match.', updated.creator_telegram_id, updated.joiner_telegram_id);
   await notifyYourTurn(updated.joiner_telegram_id, matchId);
 
   res.json({ match: result.rows[0] });
@@ -253,7 +253,7 @@ router.post('/:id/hand', authMiddleware, async (req, res) => {
 
     const updated = await getMatchFull(matchId);
     const actor   = await getUser(req.userId);
-    await notifyMove(matchId, actor.first_name || 'Player', updated.creator_telegram_id, updated.joiner_telegram_id);
+    await notifyMove(matchId, actor.first_name || 'Player', 'finished setting their hand.', updated.creator_telegram_id, updated.joiner_telegram_id);
     await notifyYourTurn(updated.creator_telegram_id, matchId);
   }
 
@@ -333,7 +333,7 @@ router.post('/:id/guess', authMiddleware, async (req, res) => {
 
       const updated = await getMatchFull(matchId);
       const actor   = await getUser(req.userId);
-      await notifyMove(matchId, actor.first_name || 'Player', updated.creator_telegram_id, updated.joiner_telegram_id);
+      await notifyMove(matchId, actor.first_name || 'Player', 'finished guessing.', updated.creator_telegram_id, updated.joiner_telegram_id);
       await notifyYourTurn(updated.joiner_telegram_id, matchId); // joiner's turn to set hand
 
     } else {

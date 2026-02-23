@@ -27,8 +27,8 @@ export async function sendBotMessage(telegramId, text) {
   }
 }
 
-export async function notifyMove(matchId, actorName, creatorTelegramId, joinerTelegramId) {
-  const text = `🐾 Match #${matchId}: <b>${actorName}</b> made a move.`;
+export async function notifyMove(matchId, actorName, action, creatorTelegramId, joinerTelegramId) {
+  const text = `🐾 Match #${matchId}: <b>${actorName}</b> ${action}`;
   await sendBotMessage(creatorTelegramId, text);
   if (joinerTelegramId && joinerTelegramId !== creatorTelegramId) {
     await sendBotMessage(joinerTelegramId, text);
