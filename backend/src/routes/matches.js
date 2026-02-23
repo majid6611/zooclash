@@ -398,11 +398,6 @@ router.post('/:id/guess', authMiddleware, async (req, res) => {
         updated.joiner_telegram_id
       );
     }
-  } else {
-    // Not done yet — just notify move
-    const updated = await getMatchFull(matchId);
-    const actor   = await getUser(req.userId);
-    await notifyMove(matchId, actor.first_name || 'Player', updated.creator_telegram_id, updated.joiner_telegram_id);
   }
 
   res.json({
