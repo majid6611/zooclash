@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: zooclash_backend
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      BOT_TOKEN: ${BOT_TOKEN}
+      JWT_SECRET: ${JWT_SECRET:-zooclash_jwt_secret_change_me}
+      TEST_MODE: ${TEST_MODE:-false}
+      APP_URL: ${APP_URL:-https://zooclash.meerkscan.com}
+      WEBHOOK_URL: ${WEBHOOK_URL:-https://zooclash.meerkscan.com}
+      PORT: 3000
+    networks:
+      - dolphia
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_TEST_MODE: ${TEST_MODE:-false}
+    container_name: zooclash_frontend
+    networks:
+      - dolphia
+    restart: unless-stopped
+
+networks:
+  dolphia:
+    external: true
