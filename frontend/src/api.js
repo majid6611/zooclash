@@ -37,4 +37,5 @@ export const api = {
   setHand:      (id, layout) => req('POST', `/matches/${id}/hand`,  { layout }),
   submitGuess:  (id, guess)  => req('POST', `/matches/${id}/guess`, { guess }),
   shareMatch:   (id)         => req('POST', `/matches/${id}/share`),
+  setAvatar:    (avatar)     => req('PUT',  '/users/avatar', { avatar }),
 };

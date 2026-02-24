@@ -7,8 +7,11 @@ export async function runMigrations() {
       telegram_id BIGINT UNIQUE NOT NULL,
       username TEXT,
       first_name TEXT,
+      avatar INTEGER DEFAULT NULL,
       created_at TIMESTAMP DEFAULT NOW()
     );
+
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar INTEGER DEFAULT NULL;
 
     CREATE TABLE IF NOT EXISTS matches (
       id SERIAL PRIMARY KEY,

@@ -39,6 +39,7 @@ router.post('/', async (req, res) => {
       id: user.id,
       telegramId: String(user.telegram_id),
       name: user.first_name || user.username || 'Player',
+      avatar: user.avatar || null,
     },
   });
 });

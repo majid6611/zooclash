@@ -2,6 +2,51 @@ import { useState, useEffect } from 'react';
 import { api } from '../api.js';
 import { shareMatch } from '../twa.js';
 
+const AVATAR_COUNT = 10;
+
+function avatarUrl(id) {
+  return id ? `/avatars/${id}.png` : null;
+}
+
+function AvatarPicker({ current, onSelect, onClose }) {
+  const [saving, setSaving] = useState(false);
+
+  async function pick(id) {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await api.setAvatar(id);
+      onSelect(id);
+      onClose();
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="avatar-picker-backdrop" onClick={onClose}>
+      <div className="avatar-picker-modal" onClick={e => e.stopPropagation()}>
+        <h3>Choose Your Avatar</h3>
+        <div className="avatar-grid">
+          {Array.from({ length: AVATAR_COUNT }, (_, i) => i + 1).map(id => (
+            <button
+              key={id}
+              className={`avatar-option${current === id ? ' selected' : ''}`}
+              onClick={() => pick(id)}
+              disabled={saving}
+            >
+              <img src={avatarUrl(id)} alt={`Avatar ${id}`} />
+            </button>
+          ))}
+        </div>
+        <button className="btn-secondary" onClick={onClose}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
 function ShareBadge({ matchId }) {
   function handleShare(e) {
     e.stopPropagation();
@@ -17,14 +62,17 @@ function ShareBadge({ matchId }) {
 
 export default function Home({
   user,
+  avatar,
+  onAvatarChange,
   onMatchSelect,
   initialOpenMatches = [],
   initialMyMatches = [],
   initialLoaded = false,
 }) {
-  const [openMatches, setOpenMatches] = useState(initialOpenMatches);
-  const [myMatches,   setMyMatches]   = useState(initialMyMatches);
-  const [creating,    setCreating]    = useState(false);
+  const [openMatches,   setOpenMatches]   = useState(initialOpenMatches);
+  const [myMatches,     setMyMatches]     = useState(initialMyMatches);
+  const [creating,      setCreating]      = useState(false);
+  const [pickerOpen,    setPickerOpen]    = useState(false);
   const playerName = user?.name || user?.first_name || 'Player';
   const activeBattles = myMatches.filter(m => m.status !== 'finished').length;
   const finishedBattles = myMatches.length - activeBattles;
@@ -74,8 +122,23 @@ export default function Home({
       <div className="home-content">
         <div className="home-header">
           <img className="logo-image" src="/logo.png" alt="ZooClash" />
-          <h1>Welcome back, {playerName}!</h1>
+          <div className="header-player">
+            <button className="avatar-btn" onClick={() => setPickerOpen(true)}>
+              {avatar
+                ? <img src={avatarUrl(avatar)} alt="avatar" />
+                : <span className="avatar-placeholder">🐾</span>}
+            </button>
+            <h1>Welcome back, {playerName}!</h1>
+          </div>
         </div>
+
+        {pickerOpen && (
+          <AvatarPicker
+            current={avatar}
+            onSelect={onAvatarChange}
+            onClose={() => setPickerOpen(false)}
+          />
+        )}
 
         <div className="rank-bar">
           <span>🏆 Jungle Warrior</span>

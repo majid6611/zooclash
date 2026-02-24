@@ -4,6 +4,7 @@ import { runMigrations } from './migrations.js';
 import { bot, setupWebhook } from './bot.js';
 import authRoutes from './routes/auth.js';
 import matchRoutes from './routes/matches.js';
+import userRoutes from './routes/users.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,6 +14,7 @@ app.use(express.json());
 
 app.use('/api/auth', authRoutes);
 app.use('/api/matches', matchRoutes);
+app.use('/api/users', userRoutes);
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
