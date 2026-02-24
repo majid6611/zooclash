@@ -1,13 +1,48 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api.js';
 
-export default function Home({ user, onMatchSelect }) {
-  const [openMatches, setOpenMatches] = useState([]);
-  const [myMatches,   setMyMatches]   = useState([]);
+function ShareBadge({ matchId }) {
+  const [sent,    setSent]    = useState(false);
+  const [sending, setSending] = useState(false);
+
+  async function handleShare(e) {
+    e.stopPropagation();
+    setSending(true);
+    try {
+      await api.shareMatch(matchId);
+      setSent(true);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <button className="share-badge" onClick={handleShare} disabled={sending || sent}>
+      {sent ? '✅' : sending ? '…' : '📨'}
+    </button>
+  );
+}
+
+export default function Home({
+  user,
+  onMatchSelect,
+  initialOpenMatches = [],
+  initialMyMatches = [],
+  initialLoaded = false,
+}) {
+  const [openMatches, setOpenMatches] = useState(initialOpenMatches);
+  const [myMatches,   setMyMatches]   = useState(initialMyMatches);
   const [creating,    setCreating]    = useState(false);
+  const playerName = user?.name || user?.first_name || 'Player';
+  const activeBattles = myMatches.filter(m => m.status !== 'finished').length;
+  const finishedBattles = myMatches.length - activeBattles;
 
   useEffect(() => {
-    load();
+    if (!initialLoaded) {
+      load();
+    }
     const t = setInterval(load, 5000);
     return () => clearInterval(t);
   }, []);
@@ -45,53 +80,110 @@ export default function Home({ user, onMatchSelect }) {
 
   return (
     <div className="home">
-      <div className="home-header">
-        <h1>🐾 ZooClash</h1>
-        <p className="greeting">Hello, {user?.name || 'Player'}!</p>
-      </div>
+      <div className="home-overlay" />
+      <div className="home-content">
+        <div className="home-header">
+          <img className="logo-image" src="/logo.png" alt="ZooClash" />
+          <h1>Welcome back, {playerName}!</h1>
+        </div>
 
-      <button className="btn-primary" onClick={createMatch} disabled={creating}>
-        {creating ? 'Creating…' : '+ Create Match'}
-      </button>
+        <div className="rank-bar">
+          <span>🏆 Jungle Warrior</span>
+          <span>🔥 {activeBattles}</span>
+          <span>⭐ {finishedBattles}</span>
+        </div>
 
-      {myMatches.length > 0 && (
+        <button className="btn-primary clash-button" onClick={createMatch} disabled={creating}>
+          {creating ? 'CREATING CLASH...' : '⚔ START A NEW CLASH'}
+        </button>
+
         <section className="section">
-          <h2>Your Active Matches</h2>
-          {myMatches.map(m => (
-            <div key={m.id} className="match-card clickable" onClick={() => onMatchSelect(m.id)}>
-              <div className="match-info">
-                <span className="match-id">#{m.id}</span>
-                <span>{m.creator_name} vs {m.joiner_name || '???'}</span>
-              </div>
-              <span className={`status-badge s-${m.status}`}>{STATUS_LABELS[m.status]}</span>
-            </div>
-          ))}
+          <h2>YOUR BATTLES</h2>
+          {myMatches.length === 0 ? (
+            <p className="empty">You do not have active battles yet.</p>
+          ) : (
+            myMatches.map(m => (
+              <BattleCard
+                key={m.id}
+                match={m}
+                leftName={m.creator_name}
+                rightName={m.joiner_name || '????'}
+                status={m.status}
+                onClick={() => onMatchSelect(m.id)}
+                onShare={m.status === 'waiting_for_joiner' ? m.id : null}
+              />
+            ))
+          )}
         </section>
-      )}
 
-      <section className="section">
-        <h2>Open Matches</h2>
-        {openMatches.length === 0 ? (
-          <p className="empty">No open matches — create one!</p>
-        ) : (
-          openMatches.map(m => (
-            <div key={m.id} className="match-card">
-              <div className="match-info">
-                <span className="match-id">#{m.id}</span>
-                <span>{m.creator_name} vs ???</span>
-              </div>
-              <button className="btn-secondary" onClick={() => joinMatch(m.id)}>Join</button>
-            </div>
-          ))
-        )}
-      </section>
+        <section className="section">
+          <h2>OPEN MATCHES</h2>
+          {openMatches.length === 0 ? (
+            <p className="empty">No open matches right now.</p>
+          ) : (
+            openMatches.map(m => (
+              <BattleCard
+                key={m.id}
+                match={m}
+                leftName={m.creator_name}
+                rightName="????"
+                status="open"
+                onJoin={() => joinMatch(m.id)}
+              />
+            ))
+          )}
+        </section>
+      </div>
     </div>
   );
 }
 
-const STATUS_LABELS = {
-  waiting_for_joiner: '⏳ Waiting',
-  setting_hands:      '🃏 Setting hands',
-  guessing:           '🔍 Guessing',
-  finished:           '🏁 Finished',
+function BattleCard({ match, leftName, rightName, status, onClick, onJoin, onShare }) {
+  const statusMeta = STATUS_META[status] || STATUS_META.waiting_for_joiner;
+  const cardClassName = `battle-card ${onClick ? 'clickable' : ''}`;
+
+  return (
+    <article className={cardClassName} onClick={onClick}>
+      <div className="battle-side battle-side-left">
+        <div className="battle-avatar">🦁</div>
+        <div className="battle-name-wrap">
+          <p className="battle-name">{leftName}</p>
+          <p className="battle-id">#{match.id}</p>
+        </div>
+      </div>
+
+      <div className="battle-center">
+        <p className="battle-vs">VS</p>
+      </div>
+
+      <div className="battle-side battle-side-right">
+        <div className="battle-name-wrap right">
+          <p className="battle-name">{rightName}</p>
+          <p className={`battle-status tone-${statusMeta.tone}`}>{statusMeta.label}</p>
+        </div>
+        <div className="battle-avatar right">{rightName === '????' ? '❔' : '🐺'}</div>
+      </div>
+
+      {onJoin && (
+        <button
+          className="join-badge"
+          onClick={(e) => {
+            e.stopPropagation();
+            onJoin();
+          }}
+        >
+          JOIN
+        </button>
+      )}
+      {onShare && <ShareBadge matchId={onShare} />}
+    </article>
+  );
+}
+
+const STATUS_META = {
+  open:               { label: 'LIVE',      tone: 'live' },
+  waiting_for_joiner: { label: 'WAITING',   tone: 'waiting' },
+  setting_hands:      { label: 'LIVE',      tone: 'live' },
+  guessing:           { label: 'YOUR TURN', tone: 'turn' },
+  finished:           { label: 'FINISHED',  tone: 'finished' },
 };
