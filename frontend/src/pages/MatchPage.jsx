@@ -3,14 +3,6 @@ import { api } from '../api.js';
 import CardArranger from '../components/CardArranger.jsx';
 import { shareMatch } from '../twa.js';
 
-function ShareButton({ matchId }) {
-  return (
-    <button className="btn-share" onClick={() => shareMatch(matchId)}>
-      📨 Share via Telegram
-    </button>
-  );
-}
-
 export const ANIMAL_EMOJI = {
   lion:     '🦁',
   tiger:    '🐯',
@@ -21,12 +13,53 @@ export const ANIMAL_EMOJI = {
 
 const PHASE_LABELS = {
   waiting_for_joiner:  '⏳ Waiting',
-  joiner_guessing:     '🔍 Joiner Guessing',
-  joiner_setting_hand: '🃏 Joiner Setting Hand',
-  creator_guessing:    '🔍 Creator Guessing',
+  joiner_guessing:     '🔍 Round 1',
+  joiner_setting_hand: '🃏 Round 2',
+  creator_guessing:    '🔍 Round 2',
   finished:            '🏁 Finished',
 };
 
+function avatarUrl(id) {
+  return id ? `/avatars/${id}.webp` : null;
+}
+
+function ShareButton({ matchId }) {
+  return (
+    <button className="btn-share" onClick={() => shareMatch(matchId)}>
+      📨 Share via Telegram
+    </button>
+  );
+}
+
+// ── VS bar ──────────────────────────────────────────────────────────────────
+function VsBar({ match, isCreator, isJoiner }) {
+  const { creatorName, joinerName, creatorAvatar, joinerAvatar } = match;
+  return (
+    <div className="mp-vs-row">
+      <div className={`mp-player${isCreator ? ' mp-me' : ''}`}>
+        <div className="mp-avatar mp-avatar-left">
+          {creatorAvatar
+            ? <img src={avatarUrl(creatorAvatar)} alt={creatorName} />
+            : <span className="mp-avatar-fallback">🦁</span>}
+        </div>
+        <p className="mp-name">{creatorName}</p>
+      </div>
+
+      <div className="mp-vs-text">VS</div>
+
+      <div className={`mp-player${isJoiner ? ' mp-me' : ''}`}>
+        <div className="mp-avatar mp-avatar-right">
+          {joinerAvatar
+            ? <img src={avatarUrl(joinerAvatar)} alt={joinerName} />
+            : <span className="mp-avatar-fallback">{joinerName ? '🐺' : '❔'}</span>}
+        </div>
+        <p className="mp-name">{joinerName || '???'}</p>
+      </div>
+    </div>
+  );
+}
+
+// ── Main component ───────────────────────────────────────────────────────────
 export default function MatchPage({
   matchId,
   user,
@@ -52,14 +85,10 @@ export default function MatchPage({
       api.getAnimals()
         .then(d => setAnimals(d.animals))
         .catch(e => console.error(e))
-        .finally(() => {
-          if (initialData) setLoading(false);
-        });
+        .finally(() => { if (initialData) setLoading(false); });
     }
 
-    if (!initialData) {
-      loadMatch();
-    }
+    if (!initialData) loadMatch();
 
     pollRef.current = setInterval(loadMatch, 3000);
     return () => clearInterval(pollRef.current);
@@ -69,7 +98,6 @@ export default function MatchPage({
     try {
       const d = await api.getMatch(matchId);
       setData(d);
-      // Reset lastGuess feedback when phase changes
       setLastGuess(prev => (prev && d.match.status !== prev.forStatus) ? null : prev);
     } catch (e) {
       setError(e.message);
@@ -85,9 +113,7 @@ export default function MatchPage({
 
   async function handleGuess(guess) {
     const result = await api.submitGuess(matchId, guess);
-    if (result) {
-      setLastGuess({ ...result, forStatus: data?.match.status });
-    }
+    if (result) setLastGuess({ ...result, forStatus: data?.match.status });
     await loadMatch();
     return result;
   }
@@ -101,145 +127,122 @@ export default function MatchPage({
   const isCreator = myRole === 'creator';
   const isJoiner  = myRole === 'joiner';
 
-  // Determine if it's currently MY turn to act
-  const myTurnToGuess =
-    (isJoiner  && status === 'joiner_guessing')  ||
-    (isCreator && status === 'creator_guessing');
-
-  const myTurnToSetHand =
-    (isCreator && status === 'waiting_for_joiner' && !match.creatorHandSet) ||
-    (isJoiner  && status === 'joiner_setting_hand');
-
-  const waiting =
-    (isCreator && status === 'joiner_guessing')     ||
-    (isCreator && status === 'joiner_setting_hand') ||
-    (isJoiner  && status === 'creator_guessing');
-
   return (
     <div className="match-page">
-      <div className="match-header">
-        <button className="btn-back btn-back-image" onClick={onBack} aria-label="Back to home">
-          <img src="/back.png" alt="Back" />
-        </button>
-        <h2>Match #{matchId}</h2>
-        <span className={`phase-badge p-${status}`}>{PHASE_LABELS[status]}</span>
+
+      {/* ── Header ── */}
+      <div className="mp-header">
+        <button className="mp-back-btn" onClick={onBack}>← BACK</button>
+        <h2 className="mp-title">Match #{matchId}</h2>
+        <span className={`mp-phase-badge p-${status}`}>{PHASE_LABELS[status]}</span>
       </div>
 
-      <div className="vs-row">
-        <span className={isCreator ? 'me' : ''}>{match.creatorName}</span>
-        <span className="vs">vs</span>
-        <span className={isJoiner  ? 'me' : ''}>{match.joinerName || '???'}</span>
+      {/* ── VS row ── */}
+      <VsBar match={match} isCreator={isCreator} isJoiner={isJoiner} />
+
+      {/* ── Phase content ── */}
+      <div className="mp-content">
+
+        {/* P1: set hand */}
+        {status === 'waiting_for_joiner' && isCreator && !match.creatorHandSet && (
+          <>
+            <p className="mp-section-title">Set your secret hand</p>
+            <p className="hint">Arrange the animals — your opponent must guess this order!</p>
+            <CardArranger animals={animals} onSubmit={handleSetHand} label="🔒 Lock In Hand" btnClass="btn-lock" />
+          </>
+        )}
+
+        {/* P1: hand locked, waiting */}
+        {status === 'waiting_for_joiner' && isCreator && match.creatorHandSet && (
+          <div className="mp-waiting">
+            <div className="big-emoji">✅</div>
+            <p className="mp-section-title">Hand locked!</p>
+            <div className="hand-preview">
+              {myHand?.map(a => <span key={a} className="emoji-card">{ANIMAL_EMOJI[a]}</span>)}
+            </div>
+            <p className="hint">Waiting for an opponent to join…</p>
+            <ShareButton matchId={matchId} />
+          </div>
+        )}
+
+        {/* Joiner: guess P1's hand */}
+        {status === 'joiner_guessing' && isJoiner && (
+          <>
+            <p className="mp-section-title">Guess {match.creatorName}'s hand</p>
+            <GuessingPanel
+              animals={animals} guesses={guesses}
+              attemptsUsed={attemptsUsed} attemptsLeft={attemptsLeft}
+              lastGuess={lastGuess} onGuess={handleGuess}
+            />
+          </>
+        )}
+
+        {/* Creator: wait while joiner guesses */}
+        {status === 'joiner_guessing' && isCreator && (
+          <div className="mp-waiting">
+            <div className="big-emoji">🔍</div>
+            <p className="mp-section-title">{match.joinerName} is guessing your hand…</p>
+            <div className="hand-preview">
+              {myHand?.map(a => <span key={a} className="emoji-card">{ANIMAL_EMOJI[a]}</span>)}
+            </div>
+            <p className="hint">Sit tight!</p>
+          </div>
+        )}
+
+        {/* Joiner: set own hand */}
+        {status === 'joiner_setting_hand' && isJoiner && (
+          <>
+            <p className="mp-section-title">Now set your secret hand</p>
+            <p className="hint">{match.creatorName} will try to guess yours!</p>
+            <CardArranger animals={animals} onSubmit={handleSetHand} label="🔒 Lock In Hand" btnClass="btn-lock" />
+          </>
+        )}
+
+        {/* Creator: wait while joiner sets hand */}
+        {status === 'joiner_setting_hand' && isCreator && (
+          <div className="mp-waiting">
+            <div className="big-emoji">🃏</div>
+            <p className="mp-section-title">{match.joinerName} is setting their hand…</p>
+            <p className="hint">Get ready to guess!</p>
+          </div>
+        )}
+
+        {/* Creator: guess joiner's hand */}
+        {status === 'creator_guessing' && isCreator && (
+          <>
+            <p className="mp-section-title">Guess {match.joinerName}'s hand</p>
+            <GuessingPanel
+              animals={animals} guesses={guesses}
+              attemptsUsed={attemptsUsed} attemptsLeft={attemptsLeft}
+              lastGuess={lastGuess} onGuess={handleGuess}
+            />
+          </>
+        )}
+
+        {/* Joiner: wait while creator guesses */}
+        {status === 'creator_guessing' && isJoiner && (
+          <div className="mp-waiting">
+            <div className="big-emoji">🔍</div>
+            <p className="mp-section-title">{match.creatorName} is guessing your hand…</p>
+            <p className="hint">Almost done!</p>
+          </div>
+        )}
+
+        {/* Finished */}
+        {status === 'finished' && result && (
+          <ResultsPanel
+            match={match} result={result}
+            myHand={myHand} opponentLayout={opponentLayout}
+            guesses={guesses} isCreator={isCreator} onBack={onBack}
+          />
+        )}
+
       </div>
-
-      {/* ── P1 sets hand (before anyone joins) ── */}
-      {status === 'waiting_for_joiner' && isCreator && !match.creatorHandSet && (
-        <div className="panel">
-          <h3>🃏 Set your secret hand</h3>
-          <p className="hint">Arrange the animals — your opponent will have to guess this order!</p>
-          <CardArranger animals={animals} onSubmit={handleSetHand} label="🔒 Lock In Hand" />
-        </div>
-      )}
-
-      {/* ── P1 waiting after locking hand ── */}
-      {status === 'waiting_for_joiner' && isCreator && match.creatorHandSet && (
-        <div className="panel center">
-          <div className="big-emoji">✅</div>
-          <p>Your hand is locked!</p>
-          <div className="hand-preview">
-            {myHand?.map(a => <span key={a} className="emoji-card">{ANIMAL_EMOJI[a]}</span>)}
-          </div>
-          <p className="hint">⏳ Waiting for an opponent to join…</p>
-          <ShareButton matchId={matchId} />
-        </div>
-      )}
-
-      {/* ── JOINER: guess P1's hand ── */}
-      {status === 'joiner_guessing' && isJoiner && (
-        <div className="panel">
-          <div className="round-label">Round 1 — Guess {match.creatorName}'s hand</div>
-          <GuessingPanel
-            animals={animals}
-            guesses={guesses}
-            attemptsUsed={attemptsUsed}
-            attemptsLeft={attemptsLeft}
-            lastGuess={lastGuess}
-            onGuess={handleGuess}
-          />
-        </div>
-      )}
-
-      {/* ── CREATOR: wait while joiner guesses ── */}
-      {status === 'joiner_guessing' && isCreator && (
-        <div className="panel center">
-          <div className="big-emoji">🔍</div>
-          <p>{match.joinerName} is guessing your hand…</p>
-          <div className="hand-preview">
-            {myHand?.map(a => <span key={a} className="emoji-card">{ANIMAL_EMOJI[a]}</span>)}
-          </div>
-          <p className="hint">Sit tight!</p>
-        </div>
-      )}
-
-      {/* ── JOINER: set their own hand ── */}
-      {status === 'joiner_setting_hand' && isJoiner && (
-        <div className="panel">
-          <div className="round-label">Round 2 — Set your secret hand</div>
-          <p className="hint">Now it's {match.creatorName}'s turn to guess yours!</p>
-          <CardArranger animals={animals} onSubmit={handleSetHand} label="🔒 Lock In Hand" />
-        </div>
-      )}
-
-      {/* ── CREATOR: wait while joiner sets hand ── */}
-      {status === 'joiner_setting_hand' && isCreator && (
-        <div className="panel center">
-          <div className="big-emoji">🃏</div>
-          <p>{match.joinerName} is setting their secret hand…</p>
-          <p className="hint">Get ready to guess!</p>
-        </div>
-      )}
-
-      {/* ── CREATOR: guess joiner's hand ── */}
-      {status === 'creator_guessing' && isCreator && (
-        <div className="panel">
-          <div className="round-label">Round 2 — Guess {match.joinerName}'s hand</div>
-          <GuessingPanel
-            animals={animals}
-            guesses={guesses}
-            attemptsUsed={attemptsUsed}
-            attemptsLeft={attemptsLeft}
-            lastGuess={lastGuess}
-            onGuess={handleGuess}
-          />
-        </div>
-      )}
-
-      {/* ── JOINER: wait while creator guesses ── */}
-      {status === 'creator_guessing' && isJoiner && (
-        <div className="panel center">
-          <div className="big-emoji">🔍</div>
-          <p>{match.creatorName} is guessing your hand…</p>
-          <p className="hint">Almost done!</p>
-        </div>
-      )}
-
-      {/* ── FINISHED ── */}
-      {status === 'finished' && result && (
-        <ResultsPanel
-          match={match}
-          result={result}
-          myHand={myHand}
-          opponentLayout={opponentLayout}
-          guesses={guesses}
-          userId={user?.id}
-          isCreator={isCreator}
-          onBack={onBack}
-        />
-      )}
     </div>
   );
 }
 
-// ── Guessing sub-component ──────────────────────────────────────────────────
+// ── Guessing panel ───────────────────────────────────────────────────────────
 function GuessingPanel({ animals, guesses, attemptsUsed, attemptsLeft, lastGuess, onGuess }) {
   return (
     <>
@@ -263,9 +266,7 @@ function GuessingPanel({ animals, guesses, attemptsUsed, attemptsLeft, lastGuess
       )}
 
       {lastGuess && !lastGuess.isCorrect && (
-        <div className="feedback-bar">
-          Last guess: {lastGuess.correctPositions}/5 correct positions
-        </div>
+        <div className="feedback-bar">Last guess: {lastGuess.correctPositions}/5 correct positions</div>
       )}
       {lastGuess?.isCorrect && (
         <div className="feedback-bar correct">🎉 Correct!</div>
@@ -273,7 +274,7 @@ function GuessingPanel({ animals, guesses, attemptsUsed, attemptsLeft, lastGuess
 
       {attemptsLeft > 0 && !lastGuess?.isCorrect && (
         <>
-          <h3>Your guess:</h3>
+          <p className="mp-section-title">Your guess:</p>
           <CardArranger animals={animals} onSubmit={onGuess} label="🔍 Submit Guess" />
         </>
       )}
@@ -285,8 +286,8 @@ function GuessingPanel({ animals, guesses, attemptsUsed, attemptsLeft, lastGuess
   );
 }
 
-// ── Results sub-component ───────────────────────────────────────────────────
-function ResultsPanel({ match, result, myHand, opponentLayout, guesses, userId, isCreator, onBack }) {
+// ── Results panel ────────────────────────────────────────────────────────────
+function ResultsPanel({ match, result, myHand, opponentLayout, guesses, isCreator, onBack }) {
   const myPoints  = isCreator ? result.creator_match_points : result.joiner_match_points;
   const myScore   = isCreator ? result.creator_guess_score  : result.joiner_guess_score;
   const oppPoints = isCreator ? result.joiner_match_points  : result.creator_match_points;
@@ -296,10 +297,9 @@ function ResultsPanel({ match, result, myHand, opponentLayout, guesses, userId, 
   return (
     <div className="panel results">
       <h3>🏁 Match Finished!</h3>
-
       <div className="result-hero">
-        {result.is_draw     ? '🤝 Draw!'
-          : myPoints === 3  ? '🏆 You Won!'
+        {result.is_draw    ? '🤝 Draw!'
+          : myPoints === 3 ? '🏆 You Won!'
           : '😔 You Lost'}
       </div>
 

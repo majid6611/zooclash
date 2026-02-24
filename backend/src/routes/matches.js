@@ -27,8 +27,8 @@ async function getUser(userId) {
 async function getMatchFull(matchId) {
   const r = await pool.query(`
     SELECT m.*,
-      c.telegram_id AS creator_telegram_id, c.first_name AS creator_name,
-      j.telegram_id AS joiner_telegram_id,  j.first_name AS joiner_name
+      c.telegram_id AS creator_telegram_id, c.first_name AS creator_name, c.avatar AS creator_avatar,
+      j.telegram_id AS joiner_telegram_id,  j.first_name AS joiner_name,  j.avatar AS joiner_avatar
     FROM matches m
     LEFT JOIN users c ON m.creator_id = c.id
     LEFT JOIN users j ON m.joiner_id  = j.id
@@ -198,8 +198,10 @@ router.get('/:id', authMiddleware, async (req, res) => {
       id:              match.id,
       status:          match.status,
       myRole,
-      creatorName:     match.creator_name || 'Creator',
-      joinerName:      match.joiner_name  || null,
+      creatorName:     match.creator_name   || 'Creator',
+      joinerName:      match.joiner_name    || null,
+      creatorAvatar:   match.creator_avatar || null,
+      joinerAvatar:    match.joiner_avatar  || null,
       creatorHandSet:  match.creator_hand_set,
       joinerHandSet:   match.joiner_hand_set,
       testMode,

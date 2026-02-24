@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ANIMAL_EMOJI } from '../pages/MatchPage.jsx';
 
-export default function CardArranger({ animals, onSubmit, label }) {
+export default function CardArranger({ animals, onSubmit, label, btnClass = 'btn-primary' }) {
   const [slots,      setSlots]      = useState([...animals]);
 
   useEffect(() => {
@@ -50,7 +50,7 @@ export default function CardArranger({ animals, onSubmit, label }) {
         ))}
       </div>
 
-      <button className="btn-primary" onClick={submit} disabled={submitting}>
+      <button className={btnClass} onClick={submit} disabled={submitting}>
         {submitting ? 'Submitting…' : label}
       </button>
     </div>
