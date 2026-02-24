@@ -62,8 +62,8 @@ body {
 }
 
 .avatar-btn {
-  width: 56px;
-  height: 56px;
+  width: 68px;
+  height: 68px;
   border-radius: 50%;
   border: 2px solid var(--accent);
   background: var(--card);
@@ -341,8 +341,8 @@ body {
 }
 
 .battle-avatar {
-  width: 46px;
-  height: 46px;
+  width: 54px;
+  height: 54px;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -491,8 +491,8 @@ body {
   }
 
   .battle-avatar {
-    width: 40px;
-    height: 40px;
+    width: 46px;
+    height: 46px;
   }
 
   .battle-name {
