@@ -356,6 +356,19 @@ body {
   border-color: rgba(157, 206, 255, .35);
 }
 
+.battle-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
+.battle-avatar-emoji {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
 .battle-name-wrap {
   min-width: 0;
 }

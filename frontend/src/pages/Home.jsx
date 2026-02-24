@@ -160,7 +160,9 @@ export default function Home({
                 key={m.id}
                 match={m}
                 leftName={m.creator_name}
+                leftAvatar={m.creator_avatar}
                 rightName={m.joiner_name || '????'}
+                rightAvatar={m.joiner_avatar}
                 status={m.status}
                 onClick={() => onMatchSelect(m.id)}
                 onShare={m.status === 'waiting_for_joiner' ? m.id : null}
@@ -179,6 +181,7 @@ export default function Home({
                 key={m.id}
                 match={m}
                 leftName={m.creator_name}
+                leftAvatar={m.creator_avatar}
                 rightName="????"
                 status="open"
                 onJoin={() => joinMatch(m.id)}
@@ -191,14 +194,23 @@ export default function Home({
   );
 }
 
-function BattleCard({ match, leftName, rightName, status, onClick, onJoin, onShare }) {
+function AvatarThumb({ avatarId, fallback }) {
+  if (avatarId) {
+    return <img className="battle-avatar-img" src={avatarUrl(avatarId)} alt="avatar" />;
+  }
+  return <span className="battle-avatar-emoji">{fallback}</span>;
+}
+
+function BattleCard({ match, leftName, leftAvatar, rightName, rightAvatar, status, onClick, onJoin, onShare }) {
   const statusMeta = STATUS_META[status] || STATUS_META.waiting_for_joiner;
   const cardClassName = `battle-card ${onClick ? 'clickable' : ''}`;
 
   return (
     <article className={cardClassName} onClick={onClick}>
       <div className="battle-side battle-side-left">
-        <div className="battle-avatar">🦁</div>
+        <div className="battle-avatar">
+          <AvatarThumb avatarId={leftAvatar} fallback="🦁" />
+        </div>
         <div className="battle-name-wrap">
           <p className="battle-name">{leftName}</p>
           <p className="battle-id">#{match.id}</p>
@@ -214,7 +226,9 @@ function BattleCard({ match, leftName, rightName, status, onClick, onJoin, onSha
           <p className="battle-name">{rightName}</p>
           <p className={`battle-status tone-${statusMeta.tone}`}>{statusMeta.label}</p>
         </div>
-        <div className="battle-avatar right">{rightName === '????' ? '❔' : '🐺'}</div>
+        <div className="battle-avatar right">
+          <AvatarThumb avatarId={rightAvatar} fallback={rightName === '????' ? '❔' : '🐺'} />
+        </div>
       </div>
 
       {onJoin && (

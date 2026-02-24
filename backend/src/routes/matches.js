@@ -48,7 +48,7 @@ router.get('/open', authMiddleware, async (req, res) => {
 
   const result = await pool.query(`
     SELECT m.id, m.status, m.created_at,
-      c.first_name AS creator_name
+      c.first_name AS creator_name, c.avatar AS creator_avatar
     FROM matches m
     JOIN users c ON m.creator_id = c.id
     WHERE m.status = 'waiting_for_joiner'
@@ -65,8 +65,8 @@ router.get('/open', authMiddleware, async (req, res) => {
 router.get('/my', authMiddleware, async (req, res) => {
   const result = await pool.query(`
     SELECT m.id, m.status, m.created_at,
-      c.first_name AS creator_name,
-      j.first_name AS joiner_name
+      c.first_name AS creator_name, c.avatar AS creator_avatar,
+      j.first_name AS joiner_name,  j.avatar AS joiner_avatar
     FROM matches m
     JOIN users c ON m.creator_id = c.id
     LEFT JOIN users j ON m.joiner_id = j.id
