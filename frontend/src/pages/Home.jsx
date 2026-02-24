@@ -5,7 +5,7 @@ import { shareMatch } from '../twa.js';
 const AVATAR_COUNT = 10;
 
 function avatarUrl(id) {
-  return id ? `/avatars/${id}.png` : null;
+  return id ? `/avatars/${id}.webp` : null;
 }
 
 function AvatarPicker({ current, onSelect, onClose }) {
