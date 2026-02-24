@@ -6,7 +6,8 @@ import {
   countCorrectPositions,
   calculateGuessScore,
   determineWinner,
-  ANIMALS,
+  ALL_ANIMALS,
+  pickAnimals,
   MAX_GUESSES,
 } from '../game.js';
 import {
@@ -37,9 +38,9 @@ async function getMatchFull(matchId) {
   return r.rows[0] || null;
 }
 
-// GET /api/matches/animals
+// GET /api/matches/animals — returns full pool (for reference)
 router.get('/animals', (req, res) => {
-  res.json({ animals: ANIMALS });
+  res.json({ animals: ALL_ANIMALS });
 });
 
 // GET /api/matches/open  — only matches where creator already set hand
@@ -53,6 +54,7 @@ router.get('/open', authMiddleware, async (req, res) => {
     JOIN users c ON m.creator_id = c.id
     WHERE m.status = 'waiting_for_joiner'
       AND m.creator_hand_set = TRUE
+      AND m.is_private = FALSE
       ${testMode ? '' : 'AND m.creator_id != $1'}
     ORDER BY m.created_at DESC
     LIMIT 20
@@ -72,6 +74,7 @@ router.get('/my', authMiddleware, async (req, res) => {
     LEFT JOIN users j ON m.joiner_id = j.id
     WHERE (m.creator_id = $1 OR m.joiner_id = $1)
       AND m.status != 'finished'
+      AND m.status != 'cancelled'
     ORDER BY m.updated_at DESC
     LIMIT 10
   `, [req.userId]);
@@ -81,9 +84,10 @@ router.get('/my', authMiddleware, async (req, res) => {
 
 // POST /api/matches — create match
 router.post('/', authMiddleware, async (req, res) => {
+  const animals = pickAnimals();
   const result = await pool.query(
-    `INSERT INTO matches (creator_id) VALUES ($1) RETURNING *`,
-    [req.userId]
+    `INSERT INTO matches (creator_id, animals) VALUES ($1, $2) RETURNING *`,
+    [req.userId, JSON.stringify(animals)]
   );
   res.json({ match: result.rows[0] });
 });
@@ -114,6 +118,9 @@ router.post('/:id/join', authMiddleware, async (req, res) => {
   if (!match) return res.status(404).json({ error: 'Match not found' });
   if (match.status !== 'waiting_for_joiner') {
     return res.status(400).json({ error: 'Match is not open for joining' });
+  }
+  if (match.is_private) {
+    return res.status(403).json({ error: 'This is a private match' });
   }
   if (!testMode && match.creator_id === req.userId) {
     return res.status(400).json({ error: 'You cannot join your own match' });
@@ -193,6 +200,8 @@ router.get('/:id', authMiddleware, async (req, res) => {
     }
   }
 
+  const matchAnimals = match.animals || ALL_ANIMALS.slice(0, 5);
+
   res.json({
     match: {
       id:              match.id,
@@ -204,6 +213,7 @@ router.get('/:id', authMiddleware, async (req, res) => {
       joinerAvatar:    match.joiner_avatar  || null,
       creatorHandSet:  match.creator_hand_set,
       joinerHandSet:   match.joiner_hand_set,
+      animals:         matchAnimals,
       testMode,
     },
     myHand:       myHandRow.rows[0]?.layout || null,
@@ -222,12 +232,13 @@ router.post('/:id/hand', authMiddleware, async (req, res) => {
   const matchId = parseInt(req.params.id);
   const { layout } = req.body;
 
-  if (!validateLayout(layout)) {
-    return res.status(400).json({ error: 'Invalid layout — must use all 5 animals exactly once' });
-  }
-
   const match = await getMatchFull(matchId);
   if (!match) return res.status(404).json({ error: 'Match not found' });
+
+  const matchAnimals = match.animals || ALL_ANIMALS.slice(0, 5);
+  if (!validateLayout(layout, matchAnimals)) {
+    return res.status(400).json({ error: 'Invalid layout — must use all 5 animals exactly once' });
+  }
 
   const isCreator = match.creator_id === req.userId;
   const isJoiner  = match.joiner_id  === req.userId;
@@ -263,6 +274,17 @@ router.post('/:id/hand', authMiddleware, async (req, res) => {
       [matchId]
     );
     newStatus = 'waiting_for_joiner';
+
+    // If joiner already pre-joined via invite, advance to guessing immediately
+    const updated = await getMatchFull(matchId);
+    if (updated.joiner_id) {
+      await pool.query(
+        `UPDATE matches SET status = 'joiner_guessing', updated_at = NOW() WHERE id = $1`,
+        [matchId]
+      );
+      newStatus = 'joiner_guessing';
+      await notifyYourTurn(updated.joiner_telegram_id, matchId);
+    }
   } else {
     // Joiner locked hand → creator's turn to guess
     await pool.query(
@@ -285,12 +307,13 @@ router.post('/:id/guess', authMiddleware, async (req, res) => {
   const matchId = parseInt(req.params.id);
   const { guess } = req.body;
 
-  if (!validateLayout(guess)) {
-    return res.status(400).json({ error: 'Invalid guess — must use all 5 animals exactly once' });
-  }
-
   const match = await getMatchFull(matchId);
   if (!match) return res.status(404).json({ error: 'Match not found' });
+
+  const matchAnimals = match.animals || ALL_ANIMALS.slice(0, 5);
+  if (!validateLayout(guess, matchAnimals)) {
+    return res.status(400).json({ error: 'Invalid guess — must use all 5 animals exactly once' });
+  }
 
   const isCreator = match.creator_id === req.userId;
   const isJoiner  = match.joiner_id  === req.userId;

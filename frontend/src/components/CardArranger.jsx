@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
-import { ANIMAL_EMOJI } from '../pages/MatchPage.jsx';
 
-export default function CardArranger({ animals, onSubmit, label, btnClass = 'btn-primary' }) {
+export default function CardArranger({
+  animals,
+  onSubmit,
+  label,
+  btnClass = 'btn-primary',
+}) {
   const [slots,      setSlots]      = useState([...animals]);
 
   useEffect(() => {
@@ -40,8 +44,9 @@ export default function CardArranger({ animals, onSubmit, label, btnClass = 'btn
             onDrop={() => { swap(dragging, i); setDragging(null); }}
           >
             <div className="card-pos">{i + 1}</div>
-            <div className="card-emoji">{ANIMAL_EMOJI[animal]}</div>
-            <div className="card-name">{animal}</div>
+            <div className="card-emoji">
+              <img src={`/animals/${animal}.webp`} alt={animal} className="animal-img" />
+            </div>
             <div className="card-arrows">
               <button onClick={() => i > 0 && swap(i, i - 1)} disabled={i === 0}>◀</button>
               <button onClick={() => i < slots.length - 1 && swap(i, i + 1)} disabled={i === slots.length - 1}>▶</button>

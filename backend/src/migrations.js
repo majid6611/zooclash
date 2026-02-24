@@ -46,6 +46,18 @@ export async function runMigrations() {
       created_at TIMESTAMP DEFAULT NOW()
     );
 
+    ALTER TABLE matches ADD COLUMN IF NOT EXISTS is_private BOOLEAN DEFAULT FALSE;
+    ALTER TABLE matches ADD COLUMN IF NOT EXISTS animals JSONB;
+
+    CREATE TABLE IF NOT EXISTS match_invites (
+      id SERIAL PRIMARY KEY,
+      match_id   INTEGER REFERENCES matches(id),
+      inviter_id INTEGER REFERENCES users(id),
+      invitee_id INTEGER REFERENCES users(id),
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+
     CREATE TABLE IF NOT EXISTS match_results (
       id SERIAL PRIMARY KEY,
       match_id INTEGER REFERENCES matches(id) UNIQUE,

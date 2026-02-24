@@ -1,10 +1,15 @@
-export const ANIMALS = ['lion', 'tiger', 'elephant', 'giraffe', 'zebra'];
+export const ALL_ANIMALS = ['eagle','elephant','giraffe','grizzly','lion','monkey','snake','tiger','wolf','zebra'];
 export const MAX_GUESSES = 10;
 
-export function validateLayout(layout) {
+export function pickAnimals() {
+  const shuffled = [...ALL_ANIMALS].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, 5);
+}
+
+export function validateLayout(layout, animals) {
   if (!Array.isArray(layout) || layout.length !== 5) return false;
   const sorted = [...layout].sort();
-  const expected = [...ANIMALS].sort();
+  const expected = [...animals].sort();
   return sorted.every((a, i) => a === expected[i]);
 }
 

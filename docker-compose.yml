@@ -24,6 +24,7 @@ services:
     container_name: zooclash_frontend
     volumes:
       - ./frontend/public/avatars:/usr/share/nginx/html/avatars:ro
+      - ./frontend/public/animals:/usr/share/nginx/html/animals:ro
     networks:
       - dolphia
     restart: unless-stopped

@@ -3,6 +3,7 @@ import { api, setToken } from './api.js';
 import { getTelegramInitData, expandApp } from './twa.js';
 import Home from './pages/Home.jsx';
 import MatchPage from './pages/MatchPage.jsx';
+import Leaderboard from './pages/Leaderboard.jsx';
 
 const TEST_MODE = import.meta.env.VITE_TEST_MODE === 'true';
 const MIN_SPLASH_MS = 3000;
@@ -21,17 +22,17 @@ export default function App() {
   const [user, setUser]               = useState(null);
   const [avatar, setAvatarState]      = useState(null);
   const [matchId, setMatchId]         = useState(getInitialMatchId);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState(null);
   const [prefetch, setPrefetch]       = useState({
     openMatches: [],
     myMatches: [],
-    animals: [],
     matchData: null,
     matchId: null,
     homePrefetched: false,
   });
-  const handleBackToHome = useCallback(() => setMatchId(null), []);
+  const handleBackToHome = useCallback(() => { setMatchId(null); setShowLeaderboard(false); }, []);
 
   useEffect(() => {
     expandApp();
@@ -68,28 +69,20 @@ export default function App() {
       const preload = {
         openMatches: [],
         myMatches: [],
-        animals: [],
         matchData: null,
         matchId: null,
         homePrefetched: false,
       };
 
-      const animalsTask = api.getAnimals()
-        .then(d => { preload.animals = d.animals || []; })
-        .catch(() => {});
-
       if (matchId) {
-        await Promise.all([
-          animalsTask,
-          api.getMatch(matchId)
-            .then(d => {
-              preload.matchData = d;
-              preload.matchId = matchId;
-            })
-            .catch(() => {}),
-        ]);
+        await api.getMatch(matchId)
+          .then(d => {
+            preload.matchData = d;
+            preload.matchId = matchId;
+          })
+          .catch(() => {});
       } else {
-        const [openResult, myResult] = await Promise.allSettled([api.getOpen(), api.getMy(), animalsTask]);
+        const [openResult, myResult] = await Promise.allSettled([api.getOpen(), api.getMy()]);
         if (openResult.status === 'fulfilled') {
           preload.openMatches = openResult.value.matches || [];
         }
@@ -131,9 +124,14 @@ export default function App() {
         <MatchPage
           matchId={matchId}
           user={user}
-          initialAnimals={prefetch.animals}
           initialData={prefetch.matchId === matchId ? prefetch.matchData : null}
           onBack={handleBackToHome}
+        />
+      ) : showLeaderboard ? (
+        <Leaderboard
+          onBack={handleBackToHome}
+          onMatchSelect={setMatchId}
+          currentUserId={user?.id}
         />
       ) : (
         <Home
@@ -141,6 +139,7 @@ export default function App() {
           avatar={avatar}
           onAvatarChange={setAvatarState}
           onMatchSelect={setMatchId}
+          onLeaderboard={() => setShowLeaderboard(true)}
           initialOpenMatches={prefetch.openMatches}
           initialMyMatches={prefetch.myMatches}
           initialLoaded={prefetch.homePrefetched}
