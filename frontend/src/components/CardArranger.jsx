@@ -1,8 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ANIMAL_EMOJI } from '../pages/MatchPage.jsx';
 
 export default function CardArranger({ animals, onSubmit, label }) {
   const [slots,      setSlots]      = useState([...animals]);
+
+  useEffect(() => {
+    if (animals.length > 0 && slots.length === 0) {
+      setSlots([...animals]);
+    }
+  }, [animals]);
   const [dragging,   setDragging]   = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
