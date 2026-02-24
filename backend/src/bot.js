@@ -6,6 +6,28 @@ const WEBHOOK_URL = process.env.WEBHOOK_URL;
 
 export const bot = new Telegraf(BOT_TOKEN);
 
+function buildMatchUrl(matchId) {
+  if (!matchId) return APP_URL;
+  try {
+    const url = new URL(APP_URL);
+    url.searchParams.set('match', String(matchId));
+    return url.toString();
+  } catch {
+    const separator = APP_URL.includes('?') ? '&' : '?';
+    return `${APP_URL}${separator}match=${encodeURIComponent(matchId)}`;
+  }
+}
+
+function buildOpenMatchButton(matchId, text = '🎮 Open Match') {
+  return {
+    reply_markup: {
+      inline_keyboard: [[
+        { text, web_app: { url: buildMatchUrl(matchId) } }
+      ]]
+    }
+  };
+}
+
 bot.start((ctx) => {
   ctx.reply(
     '🐾 Welcome to ZooClash!\nArrange your secret zoo card hand and challenge opponents.',
@@ -19,33 +41,44 @@ bot.start((ctx) => {
   );
 });
 
-export async function sendBotMessage(telegramId, text) {
+export async function sendBotMessage(telegramId, text, extra = {}) {
+  if (!telegramId) return;
   try {
-    await bot.telegram.sendMessage(telegramId, text, { parse_mode: 'HTML' });
+    await bot.telegram.sendMessage(telegramId, text, { parse_mode: 'HTML', ...extra });
   } catch (err) {
     console.error(`Bot message failed to ${telegramId}:`, err.message);
-  }
-}
-
-export async function notifyMove(matchId, actorName, action, creatorTelegramId, joinerTelegramId) {
-  const text = `🐾 Match #${matchId}: <b>${actorName}</b> ${action}`;
-  await sendBotMessage(creatorTelegramId, text);
-  if (joinerTelegramId && joinerTelegramId !== creatorTelegramId) {
-    await sendBotMessage(joinerTelegramId, text);
   }
 }
 
 export async function notifyPlayerJoined(matchId, joinerName, creatorTelegramId) {
   await sendBotMessage(
     creatorTelegramId,
-    `🐾 Match #${matchId}: <b>${joinerName}</b> joined your match!`
+    `🐾 Match #${matchId}: <b>${joinerName}</b> joined your match!`,
+    buildOpenMatchButton(matchId)
   );
 }
 
 export async function notifyYourTurn(telegramId, matchId) {
   await sendBotMessage(
     telegramId,
-    `⏳ Match #${matchId}: It's your turn now! Open ZooClash: ${APP_URL}`
+    `⏳ Match #${matchId}: It's your turn now!`,
+    buildOpenMatchButton(matchId, '🎯 Play Your Turn')
+  );
+}
+
+export async function notifyHandSwitched(matchId, telegramId) {
+  await sendBotMessage(
+    telegramId,
+    `🔄 Match #${matchId}: Opponent set their hand. It's your turn now!`,
+    buildOpenMatchButton(matchId, '🎯 Play Your Turn')
+  );
+}
+
+export async function sendMatchInvite(matchId, creatorTelegramId, creatorName) {
+  await sendBotMessage(
+    creatorTelegramId,
+    `🎮 <b>${creatorName}</b> is looking for an opponent!\n\nJoin <b>Match #${matchId}</b> and try to guess the secret animal order. Can you beat them?`,
+    buildOpenMatchButton(matchId, '🐾 Join the Match')
   );
 }
 
@@ -62,9 +95,9 @@ export async function notifyFinished(matchId, creatorName, joinerName, result, c
     `${joinerName}: GuessScore ${result.joinerGuessScore}, MatchPoints ${result.joinerMatchPoints}\n` +
     winnerText;
 
-  await sendBotMessage(creatorTelegramId, text);
+  await sendBotMessage(creatorTelegramId, text, buildOpenMatchButton(matchId, '📊 View Result'));
   if (joinerTelegramId && joinerTelegramId !== creatorTelegramId) {
-    await sendBotMessage(joinerTelegramId, text);
+    await sendBotMessage(joinerTelegramId, text, buildOpenMatchButton(matchId, '📊 View Result'));
   }
 }
 

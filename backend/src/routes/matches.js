@@ -12,7 +12,9 @@ import {
 import {
   notifyPlayerJoined,
   notifyYourTurn,
+  notifyHandSwitched,
   notifyFinished,
+  sendMatchInvite,
 } from '../bot.js';
 
 const router = Router();
@@ -84,6 +86,23 @@ router.post('/', authMiddleware, async (req, res) => {
     [req.userId]
   );
   res.json({ match: result.rows[0] });
+});
+
+// POST /api/matches/:id/share — send bot invite to creator's own Telegram chat
+router.post('/:id/share', authMiddleware, async (req, res) => {
+  const matchId = parseInt(req.params.id);
+  const match   = await getMatchFull(matchId);
+
+  if (!match) return res.status(404).json({ error: 'Match not found' });
+  if (match.creator_id !== req.userId) {
+    return res.status(403).json({ error: 'Only the creator can share this match' });
+  }
+  if (match.status !== 'waiting_for_joiner') {
+    return res.status(400).json({ error: 'Match is no longer open' });
+  }
+
+  await sendMatchInvite(matchId, match.creator_telegram_id, match.creator_name || 'Player');
+  res.json({ ok: true });
 });
 
 // POST /api/matches/:id/join
@@ -251,7 +270,7 @@ router.post('/:id/hand', authMiddleware, async (req, res) => {
     newStatus = 'creator_guessing';
 
     const updated = await getMatchFull(matchId);
-    await notifyYourTurn(updated.creator_telegram_id, matchId);
+    await notifyHandSwitched(matchId, updated.creator_telegram_id);
   }
 
   res.json({ ok: true, status: newStatus });

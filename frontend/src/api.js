@@ -36,4 +36,5 @@ export const api = {
   getMatch:     (id)      => req('GET',  `/matches/${id}`),
   setHand:      (id, layout) => req('POST', `/matches/${id}/hand`,  { layout }),
   submitGuess:  (id, guess)  => req('POST', `/matches/${id}/guess`, { guess }),
+  shareMatch:   (id)         => req('POST', `/matches/${id}/share`),
 };

@@ -2,6 +2,29 @@ import { useState, useEffect, useRef } from 'react';
 import { api } from '../api.js';
 import CardArranger from '../components/CardArranger.jsx';
 
+function ShareButton({ matchId }) {
+  const [sent,    setSent]    = useState(false);
+  const [sending, setSending] = useState(false);
+
+  async function handleShare() {
+    setSending(true);
+    try {
+      await api.shareMatch(matchId);
+      setSent(true);
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <button className="btn-share" onClick={handleShare} disabled={sending || sent}>
+      {sent ? '✅ Invite sent!' : sending ? 'Sending…' : '📨 Share via Telegram'}
+    </button>
+  );
+}
+
 export const ANIMAL_EMOJI = {
   lion:     '🦁',
   tiger:    '🐯',
@@ -18,20 +41,43 @@ const PHASE_LABELS = {
   finished:            '🏁 Finished',
 };
 
-export default function MatchPage({ matchId, user, onBack }) {
-  const [data,      setData]      = useState(null);
-  const [animals,   setAnimals]   = useState([]);
-  const [loading,   setLoading]   = useState(true);
+export default function MatchPage({
+  matchId,
+  user,
+  onBack,
+  initialData = null,
+  initialAnimals = [],
+}) {
+  const [data,      setData]      = useState(initialData);
+  const [animals,   setAnimals]   = useState(initialAnimals);
+  const [loading,   setLoading]   = useState(!(initialData && initialAnimals.length > 0));
   const [error,     setError]     = useState(null);
   const [lastGuess, setLastGuess] = useState(null);
   const pollRef = useRef(null);
 
   useEffect(() => {
-    api.getAnimals().then(d => setAnimals(d.animals));
-    loadMatch();
+    setData(initialData);
+    setAnimals(initialAnimals);
+    setLoading(!(initialData && initialAnimals.length > 0));
+    setError(null);
+    setLastGuess(null);
+
+    if (initialAnimals.length === 0) {
+      api.getAnimals()
+        .then(d => setAnimals(d.animals))
+        .catch(e => console.error(e))
+        .finally(() => {
+          if (initialData) setLoading(false);
+        });
+    }
+
+    if (!initialData) {
+      loadMatch();
+    }
+
     pollRef.current = setInterval(loadMatch, 3000);
     return () => clearInterval(pollRef.current);
-  }, [matchId]);
+  }, [matchId, initialData, initialAnimals]);
 
   async function loadMatch() {
     try {
@@ -86,7 +132,9 @@ export default function MatchPage({ matchId, user, onBack }) {
   return (
     <div className="match-page">
       <div className="match-header">
-        <button className="btn-back" onClick={onBack}>← Back</button>
+        <button className="btn-back btn-back-image" onClick={onBack} aria-label="Back to home">
+          <img src="/back.png" alt="Back" />
+        </button>
         <h2>Match #{matchId}</h2>
         <span className={`phase-badge p-${status}`}>{PHASE_LABELS[status]}</span>
       </div>
@@ -114,7 +162,8 @@ export default function MatchPage({ matchId, user, onBack }) {
           <div className="hand-preview">
             {myHand?.map(a => <span key={a} className="emoji-card">{ANIMAL_EMOJI[a]}</span>)}
           </div>
-          <p className="hint">⏳ Waiting for an opponent to join…<br />Share <strong>Match #{matchId}</strong>!</p>
+          <p className="hint">⏳ Waiting for an opponent to join…</p>
+          <ShareButton matchId={matchId} />
         </div>
       )}
 
