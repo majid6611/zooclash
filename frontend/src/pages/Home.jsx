@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api.js';
+import { shareMatch } from '../twa.js';
 
 function ShareBadge({ matchId }) {
   function handleShare(e) {
     e.stopPropagation();
-    window.Telegram?.WebApp?.switchInlineQuery(`match_${matchId}`, ['users', 'groups', 'channels']);
+    shareMatch(matchId);
   }
 
   return (

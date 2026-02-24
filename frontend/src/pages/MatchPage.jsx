@@ -1,14 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../api.js';
 import CardArranger from '../components/CardArranger.jsx';
+import { shareMatch } from '../twa.js';
 
 function ShareButton({ matchId }) {
-  function handleShare() {
-    window.Telegram?.WebApp?.switchInlineQuery(`match_${matchId}`, ['users', 'groups', 'channels']);
-  }
-
   return (
-    <button className="btn-share" onClick={handleShare}>
+    <button className="btn-share" onClick={() => shareMatch(matchId)}>
       📨 Share via Telegram
     </button>
   );
