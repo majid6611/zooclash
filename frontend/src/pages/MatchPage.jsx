@@ -3,24 +3,13 @@ import { api } from '../api.js';
 import CardArranger from '../components/CardArranger.jsx';
 
 function ShareButton({ matchId }) {
-  const [sent,    setSent]    = useState(false);
-  const [sending, setSending] = useState(false);
-
-  async function handleShare() {
-    setSending(true);
-    try {
-      await api.shareMatch(matchId);
-      setSent(true);
-    } catch (e) {
-      alert(e.message);
-    } finally {
-      setSending(false);
-    }
+  function handleShare() {
+    window.Telegram?.WebApp?.switchInlineQuery(`match_${matchId}`, ['users', 'groups', 'channels']);
   }
 
   return (
-    <button className="btn-share" onClick={handleShare} disabled={sending || sent}>
-      {sent ? '✅ Invite sent!' : sending ? 'Sending…' : '📨 Share via Telegram'}
+    <button className="btn-share" onClick={handleShare}>
+      📨 Share via Telegram
     </button>
   );
 }

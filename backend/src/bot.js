@@ -41,6 +41,31 @@ bot.start((ctx) => {
   );
 });
 
+bot.on('inline_query', async (ctx) => {
+  const query = ctx.inlineQuery.query.trim();
+  const m = query.match(/^match_(\d+)$/);
+  if (!m) return ctx.answerInlineQuery([], { cache_time: 0 });
+
+  const matchId  = m[1];
+  const matchUrl = buildMatchUrl(matchId);
+
+  await ctx.answerInlineQuery([{
+    type:  'article',
+    id:    `match_${matchId}`,
+    title: `Join Match #${matchId} — ZooClash!`,
+    description: 'Tap to challenge me — guess the secret animal order!',
+    input_message_content: {
+      message_text: `🎮 <b>ZooClash Challenge!</b>\n\nJoin <b>Match #${matchId}</b> and try to guess my secret animal order.\n\nDo you have what it takes? 🐾`,
+      parse_mode: 'HTML',
+    },
+    reply_markup: {
+      inline_keyboard: [[
+        { text: '🐾 Join the Match', web_app: { url: matchUrl } }
+      ]]
+    },
+  }], { cache_time: 0 });
+});
+
 export async function sendBotMessage(telegramId, text, extra = {}) {
   if (!telegramId) return;
   try {

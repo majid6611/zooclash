@@ -2,25 +2,14 @@ import { useState, useEffect } from 'react';
 import { api } from '../api.js';
 
 function ShareBadge({ matchId }) {
-  const [sent,    setSent]    = useState(false);
-  const [sending, setSending] = useState(false);
-
-  async function handleShare(e) {
+  function handleShare(e) {
     e.stopPropagation();
-    setSending(true);
-    try {
-      await api.shareMatch(matchId);
-      setSent(true);
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setSending(false);
-    }
+    window.Telegram?.WebApp?.switchInlineQuery(`match_${matchId}`, ['users', 'groups', 'channels']);
   }
 
   return (
-    <button className="share-badge" onClick={handleShare} disabled={sending || sent}>
-      {sent ? '✅' : sending ? '…' : '📨'}
+    <button className="share-badge" onClick={handleShare}>
+      📨
     </button>
   );
 }
