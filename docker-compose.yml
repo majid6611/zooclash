@@ -21,6 +21,8 @@ services:
       context: ./frontend
       args:
         VITE_TEST_MODE: ${TEST_MODE:-false}
+        VITE_TELEGRAM_SDK_APPNAME: ${TELEGRAM_SDK_APPNAME}
+        VITE_TELEGRAM_SDK_KEY: ${TELEGRAM_SDK_KEY}
     container_name: zooclash_frontend
     volumes:
       - ./frontend/public/avatars:/usr/share/nginx/html/avatars:ro
